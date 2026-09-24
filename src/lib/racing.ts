@@ -103,10 +103,11 @@ export function sampleTrack(world: TrackWorld, distance: number, laneOffset = 0)
 
   const next = low % world.center.length;
   const current = (next - 1 + world.center.length) % world.center.length;
-  const startDistance = current > next ? world.cumulative[current] : world.cumulative[current];
+  const startDistance = world.cumulative[current];
+  const targetDistance = next === 0 ? wrappedDistance + world.length : wrappedDistance;
   const endDistance = next === 0 ? world.length : world.cumulative[next];
   const span = Math.max(0.0001, endDistance - startDistance);
-  const amount = THREE.MathUtils.clamp((wrappedDistance - startDistance) / span, 0, 1);
+  const amount = THREE.MathUtils.clamp((targetDistance - startDistance) / span, 0, 1);
   const point = world.center[current].clone().lerp(world.center[next], amount);
   const sideways = world.right[current].clone().lerp(world.right[next], amount).normalize();
   const before = world.center[current];
