@@ -78,16 +78,24 @@ export function createTrackWorld(definition: TrackDefinition, segments = 240): T
   const cumulative = [0];
 
   for (let i = 0; i < segments; i += 1) {
-    const before = center[(i - 1 + segments) % segments];
-    const after = center[(i + 1) % segments];
+    const before = center[(i - 1 + segments) % segments] ?? center[0];
+    const after = center[(i + 1) % segments] ?? center[0];
+    if (!before || !after) continue;
     const dx = after.x - before.x;
     const dz = after.z - before.z;
     const magnitude = Math.hypot(dx, dz) || 1;
     right.push(new THREE.Vector2(dz / magnitude, -dx / magnitude));
-    if (i > 0) cumulative.push(cumulative[i - 1] + center[i].distanceTo(center[i - 1]));
+    if (i > 0) {
+      const current = center[i];
+      const previous = center[i - 1];
+      if (current && previous) cumulative.push((cumulative[i - 1] ?? 0) + current.distanceTo(previous));
+    }
   }
 
-  const length = cumulative[segments - 1] + center[segments - 1].distanceTo(center[0]);
+  const first = center[0];
+  const last = center[segments - 1];
+  if (!first || !last) throw new Error("A track requires at least one center point.");
+  const length = (cumulative[segments - 1] ?? 0) + last.distanceTo(first);
   return { curve, center, right, cumulative, length };
 }
 
@@ -97,21 +105,24 @@ export function sampleTrack(world: TrackWorld, distance: number, laneOffset = 0)
   let high = world.cumulative.length - 1;
   while (low < high) {
     const middle = Math.floor((low + high) / 2);
-    if (world.cumulative[middle] < wrappedDistance) low = middle + 1;
+    if ((world.cumulative[middle] ?? 0) < wrappedDistance) low = middle + 1;
     else high = middle;
   }
 
   const next = low % world.center.length;
   const current = (next - 1 + world.center.length) % world.center.length;
-  const startDistance = world.cumulative[current];
+  const startDistance = world.cumulative[current] ?? 0;
   const targetDistance = next === 0 ? wrappedDistance + world.length : wrappedDistance;
-  const endDistance = next === 0 ? world.length : world.cumulative[next];
+  const endDistance = next === 0 ? world.length : (world.cumulative[next] ?? world.length);
   const span = Math.max(0.0001, endDistance - startDistance);
   const amount = THREE.MathUtils.clamp((targetDistance - startDistance) / span, 0, 1);
-  const point = world.center[current].clone().lerp(world.center[next], amount);
-  const sideways = world.right[current].clone().lerp(world.right[next], amount).normalize();
-  const before = world.center[current];
-  const after = world.center[next];
+  const before = world.center[current] ?? world.center[0];
+  const after = world.center[next] ?? world.center[0];
+  if (!before || !after) return { x: 0, z: 0, yaw: 0, tangentX: 0, tangentZ: 1 };
+  const currentRight = world.right[current] ?? new THREE.Vector2(0, -1);
+  const nextRight = world.right[next] ?? currentRight;
+  const point = before.clone().lerp(after, amount);
+  const sideways = currentRight.clone().lerp(nextRight, amount).normalize();
   const tangentX = after.x - before.x;
   const tangentZ = after.z - before.z;
   point.x += sideways.x * laneOffset;
@@ -133,6 +144,7 @@ export function buildRibbon(world: TrackWorld, halfWidth: number, height: number
   for (let i = 0; i < count; i += 1) {
     const point = world.center[i];
     const right = world.right[i];
+    if (!point || !right) continue;
     positions.push(
       point.x - right.x * halfWidth, height, point.z - right.y * halfWidth,
       point.x + right.x * halfWidth, height, point.z + right.y * halfWidth,

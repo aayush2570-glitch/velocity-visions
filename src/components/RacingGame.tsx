@@ -42,6 +42,7 @@ function TrackScenery({ definition, world }: { definition: TrackDefinition; worl
     for (let i = 0; i < world.center.length; i += 6) {
       const point = world.center[i];
       const right = world.right[i];
+        if (!point || !right) continue;
       for (const side of [-1, 1]) {
         const wobble = Math.sin(i * 12.9898 + side * 78.233) * 1.8;
         const offset = side * (15.5 + wobble);
@@ -186,7 +187,7 @@ function RaceTrack({ definition, world }: { definition: TrackDefinition; world: 
     <>
       <mesh rotation-x={-Math.PI / 2} position-y={-0.12} receiveShadow>
         <planeGeometry args={[280, 280]} />
-        <meshStandardMaterial map={groundTexture ?? undefined} color={definition.ground} roughness={1} />
+        <meshStandardMaterial map={groundTexture ?? null} color={definition.ground} roughness={1} />
       </mesh>
       <TrackScenery definition={definition} world={world} />
       <mesh receiveShadow position-y={-0.02}>
@@ -262,7 +263,9 @@ function CarModel({ color, reference }: { color: string; reference?: (group: THR
       if (!mesh.isMesh) return;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      const original = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const existingMaterial = mesh.material;
+      if (!existingMaterial) return;
+      const original = Array.isArray(existingMaterial) ? existingMaterial : [existingMaterial];
       const painted = original.map((material) => {
         const copy = material.clone();
         const standard = copy as THREE.MeshStandardMaterial;
@@ -272,7 +275,9 @@ function CarModel({ color, reference }: { color: string; reference?: (group: THR
         standard.metalness = 0.34;
         return copy;
       });
-      mesh.material = Array.isArray(mesh.material) ? painted : painted[0];
+      const singlePainted = painted[0];
+      if (Array.isArray(existingMaterial)) mesh.material = painted;
+      else if (singlePainted) mesh.material = singlePainted;
     });
     return clone;
   }, [color, scene]);
@@ -452,7 +457,7 @@ function WorldScene({
       <PerspectiveCamera makeDefault fov={56} position={[playerStart.x, 7.4, playerStart.z - 13]} />
       <mesh rotation-x={-Math.PI / 2} position-y={-0.3}>
         <planeGeometry args={[500, 500]} />
-        <meshStandardMaterial map={groundTexture ?? undefined} color={definition.ground} roughness={1} />
+        <meshStandardMaterial map={groundTexture ?? null} color={definition.ground} roughness={1} />
       </mesh>
       <RaceTrack definition={definition} world={world} />
       {RACERS.map((racer, index) => (
@@ -478,11 +483,17 @@ function WorldScene({
 }
 
 function CarStandIn({ color }: { color: string }) {
+  const wheelPositions: [number, number, number][] = [
+    [-0.56, 0.2, 0.7],
+    [0.56, 0.2, 0.7],
+    [-0.56, 0.2, -0.7],
+    [0.56, 0.2, -0.7],
+  ];
   return (
     <group scale={1.6} position-y={0.08}>
       <mesh position={[0, 0.28, 0]} castShadow><boxGeometry args={[1.1, 0.42, 2.4]} /><meshStandardMaterial color={color} metalness={0.28} roughness={0.38} /></mesh>
       <mesh position={[0, 0.56, -0.2]} castShadow><boxGeometry args={[0.84, 0.4, 1.05]} /><meshStandardMaterial color="#34434a" roughness={0.22} metalness={0.32} /></mesh>
-      {[[-0.56, 0.2, 0.7], [0.56, 0.2, 0.7], [-0.56, 0.2, -0.7], [0.56, 0.2, -0.7]].map(([x, y, z], i) => <mesh key={i} position={[x, y, z]} rotation-z={Math.PI / 2} castShadow><cylinderGeometry args={[0.23, 0.23, 0.18, 12]} /><meshStandardMaterial color="#202527" roughness={0.88} /></mesh>)}
+      {wheelPositions.map(([x, y, z], i) => <mesh key={i} position={[x, y, z]} rotation-z={Math.PI / 2} castShadow><cylinderGeometry args={[0.23, 0.23, 0.18, 12]} /><meshStandardMaterial color="#202527" roughness={0.88} /></mesh>)}
     </group>
   );
 }

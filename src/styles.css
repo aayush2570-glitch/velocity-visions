@@ -51,6 +51,19 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-race-surface: var(--race-surface);
+  --color-race-panel: var(--race-panel);
+  --color-race-ink: var(--race-ink);
+  --color-race-soft: var(--race-soft);
+  --color-race-line: var(--race-line);
+  --color-race-muted: var(--race-muted);
+  --color-race-accent: var(--race-accent);
+  --color-race-accent-ink: var(--race-accent-ink);
+  --color-race-road: var(--race-road);
+  --color-race-verge: var(--race-verge);
+  --color-race-veil: var(--race-veil);
+  --color-race-overlay: var(--race-overlay);
+  --color-race-shadow: var(--race-shadow);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -95,6 +108,19 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  --race-surface: oklch(0.22 0.018 160);
+  --race-panel: oklch(0.28 0.018 160);
+  --race-ink: oklch(0.97 0.012 95);
+  --race-soft: oklch(0.84 0.018 105);
+  --race-line: oklch(0.65 0.02 125 / 40%);
+  --race-muted: oklch(0.65 0.025 130);
+  --race-accent: oklch(0.88 0.19 112);
+  --race-accent-ink: oklch(0.22 0.04 130);
+  --race-road: oklch(0.3 0.012 145);
+  --race-verge: oklch(0.76 0.045 110);
+  --race-veil: oklch(0.18 0.018 150 / 70%);
+  --race-overlay: oklch(0.12 0.014 150 / 85%);
+  --race-shadow: oklch(0.1 0.015 150 / 55%);
 }
 
 .dark {
@@ -141,4 +167,9 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+.racer-shell {
+  isolation: isolate;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
