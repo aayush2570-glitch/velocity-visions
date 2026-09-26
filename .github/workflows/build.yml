@@ -1,38 +1,65 @@
-name: Build and deploy to itch.io
+name: Build Game for Itch
 
+# Runs on every push to main, and can also be triggered manually from
+# the Actions tab.
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: [main, master]
+  workflow_dispatch: {}
+
+# Needed so this workflow can publish a GitHub Release with the built zip.
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: npm install --no-audit --no-fund
 
-      - name: Build the game
-        run: bun run build
+      - name: Build project
+        run: npm run build
 
-      - name: Package web build
-        run: |
-          cd dist
-          zip -r ../apex-drive-web.zip .
+      # THE FIX: upload the raw dist/ FOLDER, not a pre-made .zip.
+      # GitHub's Artifacts UI always adds exactly one zip layer on
+      # download. Feed it a folder and that one layer is the ONLY zip,
+      # so index.html lands right at the root — download this artifact
+      # from the Actions tab and upload it to itch.io with zero extra
+      # unzipping. (Feeding it an already-zipped file, like the old
+      # workflow did, produces a zip-inside-a-zip instead.)
+      - name: Upload playable game folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: itch-game
+          path: dist
 
-      - name: Download butler
-        run: |
-          curl -L -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
-          unzip butler.zip
-          chmod +x butler
-          ./butler -V
+      - name: Package for itch.io (zip build)
+        run: npm run build:itch
 
-      - name: Push to itch.io
-        env:
-          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: |
-          ./butler push apex-drive-web.zip ${{ secrets.ITCH_USER }}/${{ secrets.ITCH_GAME }}:html5 --userversion ${{ github.run_number }}
+      - name: Find built zip
+        id: find_zip
+        run: echo "zip_path=$(ls releases/*.zip | head -n 1)" >> "$GITHUB_OUTPUT"
+
+      # Alternative download method: a GitHub Release with the zip
+      # attached as a release asset. Release assets download as the
+      # exact raw file with no extra wrapping either, so this is just
+      # as safe to upload straight to itch.io as the folder artifact
+      # above — pick whichever is more convenient.
+      - name: Publish latest build as a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-build
+          name: Latest itch.io build
+          body: Automatically rebuilt from the latest push to main. Download the .zip below and upload it directly to itch.io.
+          make_latest: true
+          files: ${{ steps.find_zip.outputs.zip_path }}
