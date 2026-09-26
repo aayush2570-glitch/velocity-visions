@@ -12,4 +12,20 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    plugins: [
+      {
+        // The dev-only devtools transform injects data-tsd-source into every JSX
+        // element, including react-three-fiber intrinsics (mesh, group, ...). R3F
+        // warns on mount but throws on prop updates (e.g. switching tracks),
+        // crashing the scene. Strip the attribute after injection.
+        name: "strip-tsd-source",
+        enforce: "post",
+        transform(code, id) {
+          if (!id.includes("/src/") || !code.includes("data-tsd-source")) return null;
+          return code.replace(/ data-tsd-source="[^"]*"/g, "");
+        },
+      },
+    ],
+  },
 });
