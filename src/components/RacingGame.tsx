@@ -254,8 +254,8 @@ function StartGrid({ world }: { world: TrackWorld }) {
   );
 }
 
-function CarModel({ color, reference }: { color: string; reference?: (group: THREE.Group | null) => void }) {
-  const { scene } = useGLTF("/models/racer/race.glb");
+function CarModel({ color, modelPath, reference }: { color: string; modelPath: string; reference?: (group: THREE.Group | null) => void }) {
+  const { scene } = useGLTF(modelPath);
   const car = useMemo(() => {
     const clone = SkeletonUtils.clone(scene) as THREE.Group;
     clone.traverse((object) => {
@@ -474,7 +474,7 @@ function WorldScene({
         >
           {index === 0 && <pointLight position={[0, 1.1, 2.1]} color="#e6fd78" intensity={1.1} distance={4.2} />}
           <Suspense fallback={<CarStandIn color={racer.color} />}>
-            <CarModel color={racer.color} />
+            <CarModel color={racer.color} modelPath={racer.model} />
           </Suspense>
           {index > 0 && <RacerMarker name={racer.name} color={racer.color} />}
         </group>
@@ -776,3 +776,5 @@ function ordinal(value: number) {
 }
 
 useGLTF.preload("/models/racer/race.glb");
+useGLTF.preload("/models/racer/hatchback-sports.glb");
+useGLTF.preload("/models/racer/sedan-sports.glb");
