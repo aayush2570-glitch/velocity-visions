@@ -6,11 +6,17 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// Only when the itch.io CI build sets NITRO_PRESET=static: also enable
+// TanStack Start's SPA mode, which prerenders a proper static "_shell.html"
+// for the app. The normal Cloudflare deploy build is unaffected.
+const isItchBuild = process.env.NITRO_PRESET === "static";
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
+    ...(isItchBuild ? { spa: { enabled: true } } : {}),
   },
   vite: {
     plugins: [
