@@ -324,6 +324,18 @@ function WorldScene({
   const telemetryClock = useRef(0);
   const finished = useRef(false);
   const hasStarted = phase === "racing" || phase === "paused" || phase === "finished";
+  const lastWallHit = useRef(-10);
+  const lastCarHit = useRef<Record<number, number>>({});
+  const burstId = useRef(0);
+  const [bursts, setBursts] = useState<Array<{ id: number; position: [number, number, number] }>>([]);
+  const spawnBurst = useCallback((x: number, y: number, z: number) => {
+    burstId.current += 1;
+    const id = burstId.current;
+    setBursts((prev) => [...prev.slice(-5), { id, position: [x, y, z] }]);
+  }, []);
+  const removeBurst = useCallback((id: number) => {
+    setBursts((prev) => prev.filter((burst) => burst.id !== id));
+  }, []);
 
   useEffect(() => {
     carStates.current = RACERS.map((_, index) => carRecord(-index * 3.4));
@@ -377,8 +389,17 @@ function WorldScene({
       player.speed = THREE.MathUtils.clamp(player.speed, 0, topSpeed + (boosting ? 9 : 0));
       player.lateralSpeed += steer * (5.6 + player.speed * (drifting ? 0.34 : 0.24)) * dt;
       player.lateralSpeed *= Math.exp(-(brake > 0 ? 1.55 : drifting ? 1.4 : 4.6) * dt);
-      player.lateral += player.lateralSpeed * dt;
-      player.lateral = THREE.MathUtils.clamp(player.lateral, -8.6, 8.6);
+      const wallLimit = 8.6;
+      const nextLateral = player.lateral + player.lateralSpeed * dt;
+      const hitWall = Math.abs(nextLateral) > wallLimit && Math.abs(player.lateralSpeed) > 2.5;
+      player.lateral = THREE.MathUtils.clamp(nextLateral, -wallLimit, wallLimit);
+      if (hitWall && elapsed - lastWallHit.current > 0.4) {
+        lastWallHit.current = elapsed;
+        player.speed *= 0.72;
+        player.lateralSpeed *= -0.35;
+        const hitPose = sampleTrack(world, player.distance, player.lateral);
+        spawnBurst(hitPose.x, 0.45, hitPose.z);
+      }
       player.distance += player.speed * dt;
       const driftTarget = player.lateralSpeed * Math.min(player.speed / 20, 1) * (drifting ? 1.8 : 1);
       player.drift = THREE.MathUtils.damp(player.drift, driftTarget, 6, dt);
@@ -410,6 +431,22 @@ function WorldScene({
         group.rotation.y = pose.yaw;
         const child = group.children[0];
         if (child) child.rotation.z = Math.sin(elapsed * 3 + index) * 0.018;
+      }
+
+      if (moving) {
+        const carCollisionRadius = 2.2;
+        const dx = pose.x - playerPose.x;
+        const dz = pose.z - playerPose.z;
+        const gap = Math.hypot(dx, dz);
+        if (gap < carCollisionRadius && elapsed - (lastCarHit.current[index] ?? -10) > 0.5) {
+          lastCarHit.current[index] = elapsed;
+          player.speed *= 0.65;
+          opponent.speed *= 0.85;
+          const opponentLane = RACERS[index]?.lane ?? 0;
+          const pushDir = player.lateral !== opponentLane ? Math.sign(player.lateral - opponentLane) : index % 2 === 0 ? 1 : -1;
+          player.lateralSpeed += pushDir * 3.5;
+          spawnBurst((pose.x + playerPose.x) / 2, 0.45, (pose.z + playerPose.z) / 2);
+        }
       }
     }
 
@@ -480,7 +517,66 @@ function WorldScene({
         </group>
       ))}
       {!hasStarted && <StartLights world={world} />}
+      {bursts.map((burst) => (
+        <CollisionSpark key={burst.id} position={burst.position} onDone={() => removeBurst(burst.id)} />
+      ))}
     </>
+  );
+}
+
+const SPARK_COLORS = ["#ff6a2b", "#ffb545", "#ff3b1f", "#4fb2ff", "#2b7bff"];
+
+function CollisionSpark({ position, onDone }: { position: [number, number, number]; onDone: () => void }) {
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => {
+        const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.4;
+        const speed = 2.4 + Math.random() * 2.6;
+        return {
+          velocity: new THREE.Vector3(Math.cos(angle) * speed, 1.6 + Math.random() * 2.2, Math.sin(angle) * speed),
+          color: SPARK_COLORS[i % SPARK_COLORS.length] ?? "#ffffff",
+          size: 0.09 + Math.random() * 0.07,
+        };
+      }),
+    [],
+  );
+  const age = useRef(0);
+  const done = useRef(false);
+  const groupRef = useRef<THREE.Group>(null);
+  const life = 0.55;
+
+  useFrame((_, rawDelta) => {
+    const delta = Math.min(rawDelta, 0.05);
+    age.current += delta;
+    const group = groupRef.current;
+    if (group) {
+      group.children.forEach((child, index) => {
+        const particle = particles[index];
+        if (!particle) return;
+        child.position.x += particle.velocity.x * delta;
+        child.position.y += particle.velocity.y * delta;
+        child.position.z += particle.velocity.z * delta;
+        particle.velocity.y -= 9 * delta;
+        const mesh = child as THREE.Mesh;
+        const material = mesh.material as THREE.MeshBasicMaterial | undefined;
+        if (material) material.opacity = Math.max(0, 1 - age.current / life);
+      });
+    }
+    if (age.current >= life && !done.current) {
+      done.current = true;
+      onDone();
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={position}>
+      {particles.map((particle, index) => (
+        <mesh key={index}>
+          <sphereGeometry args={[particle.size, 6, 6]} />
+          <meshBasicMaterial color={particle.color} transparent opacity={1} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
   );
 }
 
