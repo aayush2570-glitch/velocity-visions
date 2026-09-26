@@ -360,26 +360,28 @@ function WorldScene({
     const throttle = Math.max(controls.current.throttle, keyboard.has("KeyW") || keyboard.has("ArrowUp") ? 1 : 0);
     const brake = Math.max(controls.current.brake, keyboard.has("KeyS") || keyboard.has("ArrowDown") ? 1 : 0);
     const boosting = controls.current.boost || keyboard.has("ShiftLeft") || keyboard.has("ShiftRight");
+    const drifting = keyboard.has("Space") && player.speed > 8 && steer !== 0;
 
     if (moving) {
       const offRoad = Math.abs(player.lateral) > 6.6;
       const topSpeed = offRoad ? 9.5 : 28.5;
       player.speed += throttle * (boosting && player.boost > 0 ? 30 : 18) * dt;
       player.speed -= brake * 25 * dt;
-      player.speed -= player.speed * (offRoad ? 2.1 : 0.45) * dt;
+      player.speed -= player.speed * (offRoad ? 2.1 : drifting ? 0.9 : 0.45) * dt;
       if (boosting && player.boost > 0) {
         player.speed = Math.min(topSpeed + 9, player.speed);
         player.boost = Math.max(0, player.boost - dt * 29);
       } else {
-        player.boost = Math.min(100, player.boost + dt * 4.2);
+        player.boost = Math.min(100, player.boost + dt * (drifting ? 9 : 4.2));
       }
       player.speed = THREE.MathUtils.clamp(player.speed, 0, topSpeed + (boosting ? 9 : 0));
-      player.lateralSpeed += steer * (5.6 + player.speed * 0.24) * dt;
-      player.lateralSpeed *= Math.exp(-(brake > 0 ? 1.55 : 4.6) * dt);
+      player.lateralSpeed += steer * (5.6 + player.speed * (drifting ? 0.34 : 0.24)) * dt;
+      player.lateralSpeed *= Math.exp(-(brake > 0 ? 1.55 : drifting ? 1.4 : 4.6) * dt);
       player.lateral += player.lateralSpeed * dt;
       player.lateral = THREE.MathUtils.clamp(player.lateral, -8.6, 8.6);
       player.distance += player.speed * dt;
-      player.drift = THREE.MathUtils.damp(player.drift, player.lateralSpeed * Math.min(player.speed / 20, 1), 6, dt);
+      const driftTarget = player.lateralSpeed * Math.min(player.speed / 20, 1) * (drifting ? 1.8 : 1);
+      player.drift = THREE.MathUtils.damp(player.drift, driftTarget, 6, dt);
     } else {
       player.speed = Math.max(0, player.speed - player.speed * 2.2 * dt);
       player.drift = THREE.MathUtils.damp(player.drift, 0, 4, dt);
@@ -633,7 +635,7 @@ export function RacingGame() {
   };
 
   return (
-    <main className="racer-shell relative h-[100svh] min-h-[620px] w-full overflow-hidden bg-race-surface text-race-ink">
+    <main className="racer-shell relative h-[100svh] min-h-[560px] w-full overflow-hidden bg-race-surface text-race-ink">
       <Canvas className="absolute inset-0" shadows dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }} camera={{ position: [0, 7, 13], fov: 56 }}>
         <WorldScene definition={activeTrack} phase={phase} elapsed={raceTime} resetKey={resetKey} controls={controls} onTelemetry={setTelemetry} onFinish={finishRace} />
       </Canvas>
@@ -740,7 +742,7 @@ export function RacingGame() {
                 <TouchControl label="Steer right" display="→" onPress={() => setControl("steer", 1)} onRelease={() => setControl("steer", 0)} />
               </div>
               <div className="text-right">
-                <div className="text-[9px] font-extrabold tracking-[0.19em] text-race-ink">KM/H</div>
+                <div className="text-[9px] font-extrabold tracking-[0.19em] text-race-ink">SPEED</div>
                 <div className="flex items-baseline gap-1"><span className="text-[42px] font-black leading-none tabular-nums sm:text-[56px]">{String(telemetry.speed).padStart(3, "0")}</span><span className="text-[10px] font-extrabold text-race-accent">MPH</span></div>
               </div>
               <div className="hidden h-[58px] w-px bg-race-line sm:block" />
