@@ -18,37 +18,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      # This repo uses Bun (bun.lock / bunfig.toml), not npm — there is
+      # no package-lock.json/yarn.lock, so actions/setup-node's npm
+      # cache option fails with "Dependencies lock file is not found".
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
+          bun-version: latest
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: bun install --frozen-lockfile
 
       - name: Build project
-        run: npm run build
+        run: bun run build
 
-      # THE FIX: upload the raw dist/ FOLDER, not a pre-made .zip.
+      # Upload the raw dist/ FOLDER, not a pre-made .zip.
       # GitHub's Artifacts UI always adds exactly one zip layer on
       # download. Feed it a folder and that one layer is the ONLY zip,
       # so index.html lands right at the root — download this artifact
       # from the Actions tab and upload it to itch.io with zero extra
-      # unzipping. (Feeding it an already-zipped file, like the old
-      # workflow did, produces a zip-inside-a-zip instead.)
+      # unzipping.
       - name: Upload playable game folder
         uses: actions/upload-artifact@v4
         with:
           name: itch-game
           path: dist
 
-      - name: Package for itch.io (zip build)
-        run: npm run build:itch
-
-      - name: Find built zip
-        id: find_zip
-        run: echo "zip_path=$(ls releases/*.zip | head -n 1)" >> "$GITHUB_OUTPUT"
+      # There is no "build:itch" script in package.json, so zip the
+      # already-built dist/ folder directly instead of depending on one.
+      - name: Zip build for itch.io
+        run: |
+          mkdir -p releases
+          cd dist
+          zip -r ../releases/velocity-visions-itch.zip .
 
       # Alternative download method: a GitHub Release with the zip
       # attached as a release asset. Release assets download as the
@@ -62,4 +64,4 @@ jobs:
           name: Latest itch.io build
           body: Automatically rebuilt from the latest push to main. Download the .zip below and upload it directly to itch.io.
           make_latest: true
-          files: ${{ steps.find_zip.outputs.zip_path }}
+          files: releases/velocity-visions-itch.zip
