@@ -191,10 +191,16 @@ export function createGroundTexture(color: string, seed: number) {
   return texture;
 }
 
+export const RACER_MODELS = {
+  race: "/models/racer/race.glb",
+  hatchback: "/models/racer/hatchback-sports.glb",
+  sedan: "/models/racer/sedan-sports.glb",
+} as const;
+
 export const RACERS = [
-  { name: "YOU", color: "#d8fa48", lane: 0 },
-  { name: "NOVA", color: "#e65b48", lane: -3.5 },
-  { name: "KAI", color: "#57a9d8", lane: 3.5 },
-  { name: "MILA", color: "#f2e4ca", lane: -1.75 },
-  { name: "JAX", color: "#e9a43b", lane: 1.75 },
+  { name: "YOU", color: "#d8fa48", lane: 0, model: RACER_MODELS.race },
+  { name: "NOVA", color: "#e65b48", lane: -3.5, model: RACER_MODELS.hatchback },
+  { name: "KAI", color: "#57a9d8", lane: 3.5, model: RACER_MODELS.sedan },
+  { name: "MILA", color: "#f2e4ca", lane: -1.75, model: RACER_MODELS.hatchback },
+  { name: "JAX", color: "#e9a43b", lane: 1.75, model: RACER_MODELS.sedan },
 ];
