@@ -192,9 +192,9 @@ export function createGroundTexture(color: string, seed: number) {
 }
 
 export const RACER_MODELS = {
-  race: "/models/racer/race.glb",
-  hatchback: "/models/racer/hatchback-sports.glb",
-  sedan: "/models/racer/sedan-sports.glb",
+  race: `${import.meta.env.BASE_URL}models/racer/race.glb`,
+  hatchback: `${import.meta.env.BASE_URL}models/racer/hatchback-sports.glb`,
+  sedan: `${import.meta.env.BASE_URL}models/racer/sedan-sports.glb`,
 } as const;
 
 export const RACERS = [
