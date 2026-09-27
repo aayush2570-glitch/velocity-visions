@@ -13,6 +13,11 @@ type RaceRecord = { distance: number; lateral: number; speed: number; lateralSpe
 
 const LAP_COUNT = 3;
 const ZERO_TELEMETRY: Telemetry = { speed: 0, lap: 1, place: 1, elapsed: 0, progress: 0, boost: 100 };
+const CAR_OPTIONS: Array<{ id: keyof typeof RACER_MODELS; name: string; blurb: string }> = [
+  { id: "race", name: "APEX RACER", blurb: "Balanced factory racer" },
+  { id: "hatchback", name: "STREET HATCH", blurb: "Light and flickable" },
+  { id: "sedan", name: "GT SEDAN", blurb: "Stable at high speed" },
+];
 
 function carRecord(distance: number): RaceRecord {
   return { distance, lateral: 0, speed: 0, lateralSpeed: 0, yaw: 0, boost: 100, drift: 0 };
@@ -303,6 +308,7 @@ function WorldScene({
   controls,
   onTelemetry,
   onFinish,
+  playerModel,
 }: {
   definition: TrackDefinition;
   phase: RacePhase;
@@ -311,6 +317,7 @@ function WorldScene({
   controls: React.MutableRefObject<{ steer: number; throttle: number; brake: number; boost: boolean }>;
   onTelemetry: (value: Telemetry) => void;
   onFinish: (place: number) => void;
+  playerModel: string;
 }) {
   const world = useMemo(() => createTrackWorld(definition), [definition]);
   const keys = useRaceKeys();
@@ -511,7 +518,7 @@ function WorldScene({
         >
           {index === 0 && <pointLight position={[0, 1.1, 2.1]} color="#e6fd78" intensity={1.1} distance={4.2} />}
           <Suspense fallback={<CarStandIn color={racer.color} />}>
-            <CarModel color={racer.color} modelPath={racer.model} />
+            <CarModel color={racer.color} modelPath={index === 0 ? playerModel : racer.model} />
           </Suspense>
           {index > 0 && <RacerMarker name={racer.name} color={racer.color} />}
         </group>
@@ -679,6 +686,7 @@ function TrackMap({ track, selected = false }: { track: TrackDefinition; selecte
 
 export function RacingGame() {
   const [trackId, setTrackId] = useState<TrackId>("alpine");
+  const [carChoice, setCarChoice] = useState<keyof typeof RACER_MODELS>("race");
   const [phase, setPhase] = useState<RacePhase>("ready");
   const [elapsed, setElapsed] = useState(0);
   const [telemetry, setTelemetry] = useState(ZERO_TELEMETRY);
@@ -733,7 +741,7 @@ export function RacingGame() {
   return (
     <main className="racer-shell relative h-[100svh] min-h-[560px] w-full overflow-hidden bg-race-surface text-race-ink">
       <Canvas className="absolute inset-0" shadows dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }} camera={{ position: [0, 7, 13], fov: 56 }}>
-        <WorldScene definition={activeTrack} phase={phase} elapsed={raceTime} resetKey={resetKey} controls={controls} onTelemetry={setTelemetry} onFinish={finishRace} />
+        <WorldScene definition={activeTrack} phase={phase} elapsed={raceTime} resetKey={resetKey} controls={controls} onTelemetry={setTelemetry} onFinish={finishRace} playerModel={RACER_MODELS[carChoice]} />
       </Canvas>
 
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-race-veil via-transparent to-race-veil/70" />
@@ -768,6 +776,25 @@ export function RacingGame() {
                 {phase === "finished" ? <RotateCcw /> : <Play fill="currentColor" />} {phase === "finished" ? "RACE AGAIN" : "START RACE"}
               </Button>
               <div className="border-l border-race-line pl-4 text-[10px] font-bold leading-[1.8] tracking-[0.1em] text-race-soft"><span className="text-race-ink">03 LAPS</span><br />5 DRIVERS</div>
+            </div>
+          </div>
+
+          <div className="pointer-events-auto flex w-full flex-col gap-3 pb-1 md:max-w-[820px]">
+            <div className="flex items-end justify-between">
+              <div>
+                <div className="text-[9px] font-extrabold tracking-[0.22em] text-race-accent">CHOOSE YOUR CAR</div>
+                <div className="mt-1 text-[11px] text-race-soft">Three builds. Pick your line.</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2 md:gap-3">
+              {CAR_OPTIONS.map((option) => (
+                <button key={option.id} type="button" onClick={() => setCarChoice(option.id)} aria-pressed={carChoice === option.id} className={`group relative flex min-h-[74px] flex-col justify-center gap-1 overflow-hidden rounded-md border px-3 py-2 text-left transition-all ${carChoice === option.id ? "border-race-accent bg-race-panel/90 shadow-[inset_0_0_0_1px_var(--color-race-accent)]" : "border-race-line/85 bg-race-panel/80 hover:border-race-soft"}`}>
+                  <div className="text-[9px] font-bold tracking-[0.14em] text-race-accent">CAR</div>
+                  <div className="truncate text-[11px] font-black tracking-[0.005em] text-race-ink sm:text-sm">{option.name}</div>
+                  <div className="truncate text-[8px] font-semibold tracking-[0.08em] text-race-soft">{option.blurb}</div>
+                  {carChoice === option.id && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-race-accent" />}
+                </button>
+              ))}
             </div>
           </div>
 
