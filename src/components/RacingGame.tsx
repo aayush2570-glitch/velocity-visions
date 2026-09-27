@@ -1,7 +1,7 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Environment, Lightformer, PerspectiveCamera, Sky, useGLTF } from "@react-three/drei";
 import { Button } from "@/components/ui/button";
-import { createGroundTexture, createTrackWorld, buildRibbon, RACERS, sampleTrack, TRACKS, type TrackDefinition, type TrackId, type TrackWorld } from "@/lib/racing";
+import { createGroundTexture, createTrackWorld, buildRibbon, RACERS, RACER_MODELS, sampleTrack, TRACKS, type TrackDefinition, type TrackId, type TrackWorld } from "@/lib/racing";
 import { Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SkeletonUtils } from "three-stdlib";
@@ -871,6 +871,6 @@ function ordinal(value: number) {
   return value === 1 ? "1st" : value === 2 ? "2nd" : value === 3 ? "3rd" : `${value}th`;
 }
 
-useGLTF.preload("/models/racer/race.glb");
-useGLTF.preload("/models/racer/hatchback-sports.glb");
-useGLTF.preload("/models/racer/sedan-sports.glb");
+useGLTF.preload(RACER_MODELS.race);
+useGLTF.preload(RACER_MODELS.hatchback);
+useGLTF.preload(RACER_MODELS.sedan);
