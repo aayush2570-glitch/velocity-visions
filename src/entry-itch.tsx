@@ -1,19 +1,18 @@
 // Standalone client-only entry point for the itch.io static build.
-// Bypasses TanStack Start's server/SSR/prerender pipeline entirely —
-// this is a plain client-side mount of the same router used by the
-// normal app, so it needs no server at runtime and builds to plain
-// static files that any static host (including itch.io) can serve.
+// Mounts <RacingGame> directly with no router in the loop at all.
+// itch.io loads the page as .../index.html (not "/"), so a router
+// that only matches the "/" path would render a NotFound screen on
+// first load (fixed by navigating "home", which is exactly what was
+// happening). This is a single-screen game, so there's nothing to
+// route between — just render it unconditionally.
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
-import { RouterProvider } from "@tanstack/react-router";
 import "./styles.css";
-import { getRouter } from "./router";
-
-const router = getRouter();
+import { RacingGame } from "@/components/RacingGame";
 
 const rootElement = document.getElementById("root")!;
 ReactDOM.createRoot(rootElement).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <RacingGame />
   </StrictMode>,
 );
